@@ -15,14 +15,15 @@ NovaBank Core est un système de gestion de base de données bancaire sous Postg
 ## Structure
 
 novabank/
-├── 01_setup_server.sh
-├── 02_schema_and_data.sql
-├── 03_roles_and_permissions.sql
-├── 04_views.sql
-├── 05_indexes_and_perf.sql
-├── 06_triggers.sql
-├── 07_procedures.sql
-├── master.sh
+├── scripts/
+│   ├── 01_setup_server.sh
+│   ├── 02_schema_and_data.sql
+│   ├── 03_roles_and_permissions.sql
+│   ├── 04_views.sql
+│   ├── 05_indexes_and_perf.sql
+│   ├── 06_triggers.sql
+│   ├── 07_procedures.sql
+│   └── master.sh
 ├── bankdb_backup.dump
 └── README.md
 
