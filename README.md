@@ -40,3 +40,44 @@ Les accès sont strictement régis selon le principe du moindre privilège. L'ap
 | `auditors_group` | Nologin | `core`, `audit` | `SELECT` sur l'ensemble des tables `core` et `audit.audit_log` | Aucun |
 
 ---
+
+## Instructions de Déploiement
+
+Pour réinitialiser et exécuter l'ensemble du projet en une seule commande :
+
+```bash
+cd scripts && sudo ./master.sh
+```
+## Schéma des tables
+
+core.customers (customer_id, first_name, last_name, email, phone, birth_date, kyc_status, risk_level)
+       │
+       └───► core.accounts (account_id, customer_id, iban, account_type, balance, status)
+                 │
+                 ├───► core.transfers (transfer_id, from_account_id, to_account_id, amount, label)
+                 │
+                 └───► core.transactions (tx_id, account_id, tx_type, amount, balance_after, transfer_id)
+                           │
+                           └───► core.fraud_alerts (alert_id, account_id, tx_id, rule_code, status)
+
+audit.audit_log (log_id, table_name, operation, old_data, new_data, db_user, changed_at)
+
+## Sauvegarde et Restauration
+
+## 1. Création d'une base de test
+sudo -u postgres createdb bankdb_test
+
+## 2. Restauration de la sauvegarde avec pg_restore
+sudo -u postgres pg_restore -d bankdb_test < bankdb_backup.dump
+
+## 3. Vérification du nombre d'écritures
+sudo -u postgres psql -d bankdb_test -c "SELECT count(*) FROM core.transactions;"
+
+## 4. Suppression de la base de test
+sudo -u postgres dropdb bankdb_test
+
+# Utilisation de l'IA (Transparence)
+
+Dans le cadre du projet NovaBank Core, l'IA a été consultée pour : 
+ 1. Génération de masse : Optimisation de la requête de création du 1 000 000 de transactions via generate_series et l'utilisation de la fonction de fenêtre SUM() OVER (PARTITION BY ... ORDER BY ...) pour calculer les soldes cumulés sans boucles procédurales.
+ 2. Gestion de la concurrence : Structuration de la procédure stockée sp_transfer avec un ordre strict de verrouillage des lignes par ID croissant (ORDER BY account_id FOR UPDATE) pour éviter tout problème d'interblocage (deadlock).
