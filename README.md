@@ -105,9 +105,23 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY core.mv_daily_summary;
 
 Le fichier local `bankdb_backup.dump` est ignoré par Git.
 
-## Captures existantes
+## Captures d'écran déjà présentes dans le dépôt
 
-Les captures de la première version sont dans l'historique du README. Ajouter les nouvelles captures de validation avant le rendu.
+Ces captures proviennent de la première version. Ajouter celles des nouveaux tests avant le rendu.
+
+![Installation / terminal](https://github.com/user-attachments/assets/50331390-f275-49e5-aff3-f4f2effb3f73)
+
+![Configuration / terminal](https://github.com/user-attachments/assets/c1c82224-0a7c-4c68-a731-494443c5cb0c)
+
+![Connexion / terminal](https://github.com/user-attachments/assets/a89f19a5-98ef-4d89-9b7a-77a0dd046f30)
+
+![Exécution PostgreSQL](https://github.com/user-attachments/assets/1f269ed9-c39c-470b-ac81-6e9a6341207a)
+
+![Scripts SQL](https://github.com/user-attachments/assets/03810885-efbb-4259-b343-e568c88cb811)
+
+![Vérification 1](https://github.com/user-attachments/assets/d425f7a7-1f83-4662-bb6d-7b81e936823d)
+
+![Vérification 2](https://github.com/user-attachments/assets/421958db-a576-400b-bde4-c7c7982277d4)
 
 ## Usage de l'IA
 
