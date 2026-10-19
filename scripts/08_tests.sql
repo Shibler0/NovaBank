@@ -71,7 +71,7 @@ BEGIN
 
     refused := false;
     BEGIN
-        EXECUTE 'TRUNCATE core.transactions';
+        EXECUTE 'TRUNCATE core.transactions CASCADE';
     EXCEPTION WHEN raise_exception THEN refused := true;
     END;
     IF NOT refused THEN RAISE EXCEPTION 'TRUNCATE du grand livre accepté'; END IF;
