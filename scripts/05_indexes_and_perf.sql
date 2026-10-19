@@ -1,9 +1,20 @@
-CREATE INDEX idx_transactions_account ON core.transactions (account_id, created_at DESC);
-CREATE INDEX idx_transfers_from ON core.transfers (from_account_id);
-CREATE INDEX idx_transfers_to ON core.transfers (to_account_id);
-CREATE INDEX idx_customers_name ON core.customers (last_name, first_name);
+-- Comparer les temps et les buffers affichés avant et après l'index.
+ANALYZE core.transactions;
+\echo === AVANT LES INDEX ===
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM core.transactions WHERE account_id = 1
+ORDER BY created_at DESC LIMIT 10;
 
-ANALYZE core.customers, core.accounts, core.transfers, core.transactions;
+CREATE INDEX idx_transactions_account_date
+ON core.transactions (account_id, created_at DESC);
 
-EXPLAIN ANALYZE
-SELECT * FROM core.transactions WHERE account_id = 1 ORDER BY created_at DESC LIMIT 10;
+CREATE INDEX idx_customers_email_lower ON core.customers (lower(email));
+CREATE INDEX idx_accounts_blocked ON core.accounts (account_id)
+WHERE status = 'BLOCKED';
+CREATE INDEX idx_transactions_date_brin ON core.transactions USING brin (created_at);
+
+ANALYZE core.transactions;
+\echo === APRES LES INDEX ===
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM core.transactions WHERE account_id = 1
+ORDER BY created_at DESC LIMIT 10;

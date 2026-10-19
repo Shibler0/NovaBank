@@ -1,0 +1,6 @@
+# Sauvegardes et fichiers générés localement
+*.dump
+*.backup
+*.log
+*.csv
+.env

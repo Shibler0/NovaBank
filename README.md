@@ -1,83 +1,114 @@
-# NovaBank
+# NovaBank Core
 
-## Description du Projet
-NovaBank Core est un système de gestion de base de données bancaire sous PostgreSQL 18 développé sur une VM Ubuntu. Le projet couvre l'architecture complète : sécurisation du serveur Linux/PostgreSQL, modélisation de schémas complexes, génération d'un million de transactions financières cohérentes, gestion stricte des privilèges (principe du moindre privilège), vues de masquage et d'agrégation, optimisation des performances (indexation ciblée), déclencheurs d'audit et de détection de fraude, ainsi que procédures stockées d'exécution sécurisées.
+Projet SQL avancé (PostgreSQL, Linux et Bash). La base contient 6 tables : clients, comptes, virements, écritures, alertes et audit. Les scripts créent **1 000 000 d'écritures** et protègent les soldes et l'historique.
 
-## Captures d'écran
-<img width="979" height="144" alt="Capture d’écran 2026-10-13 à 15 25 31" src="https://github.com/user-attachments/assets/50331390-f275-49e5-aff3-f4f2effb3f73" />
-<img width="979" height="144" alt="Capture d’écran 2026-10-13 à 15 14 24" src="https://github.com/user-attachments/assets/c1c82224-0a7c-4c68-a731-494443c5cb0c" />
-<img width="1145" height="144" alt="Capture d’écran 2026-10-13 à 15 06 37" src="https://github.com/user-attachments/assets/a89f19a5-98ef-4d89-9b7a-77a0dd046f30" />
-<img width="1145" height="374" alt="Capture d’écran 2026-10-13 à 14 57 57" src="https://github.com/user-attachments/assets/1f269ed9-c39c-470b-ac81-6e9a6341207a" />
-<img width="1145" height="374" alt="Capture d’écran 2026-10-13 à 14 30 27" src="https://github.com/user-attachments/assets/03810885-efbb-4259-b343-e568c88cb811" />
-<img width="771" height="374" alt="Capture d’écran 2026-10-13 à 14 30 12" src="https://github.com/user-attachments/assets/d425f7a7-1f83-4662-bb6d-7b81e936823d" />
-<img width="771" height="374" alt="Capture d’écran 2026-10-13 à 14 29 52" src="https://github.com/user-attachments/assets/421958db-a576-400b-bde4-c7c7982277d4" />
+## Préparation
 
-## Structure
+- VM Ubuntu Server avec PostgreSQL (guide : version 18), SSH et Git.
+- Deux cartes réseau sur la VM : NAT et host-only, avec une adresse fixe.
+- Le script utilise `192.168.51.10` (VM) et `192.168.51.0/24` (réseau privé). Adapter ces valeurs si besoin.
+- Aucun Docker et aucun mot de passe dans les fichiers du dépôt.
 
-novabank/
-├── scripts/
-│   ├── 01_setup_server.sh
-│   ├── 02_schema_and_data.sql
-│   ├── 03_roles_and_permissions.sql
-│   ├── 04_views.sql
-│   ├── 05_indexes_and_perf.sql
-│   ├── 06_triggers.sql
-│   ├── 07_procedures.sql
-│   └── master.sh
-├── bankdb_backup.dump
-└── README.md
-
-## Rôles et Matrice des Droits
-
-Les accès sont strictement régis selon le principe du moindre privilège. L'application `app_user` n'a aucun accès direct en écriture sur les tables de données et doit obligatoirement passer par les procédures stockées.
-
-| Rôle / Groupe | Type | Schémas | Droits sur Tables / Vues | Accès aux Procédures |
-| :--- | :--- | :--- | :--- | :--- |
-| `bank_owner` | Login | `core`, `audit` | Propriétaire complet (`ALL PRIVILEGES`) | `ALL` |
-| `app_user` | Login | `core` | `SELECT` sur `core` & vues | `EXECUTE` (`sp_transfer`) |
-| `analysts_group` | Nologin | `core` | `SELECT` sur `accounts`, `transfers`, `transactions`, `fraud_alerts`, `mv_daily_account_summary` | Aucun |
-| `support_group` | Nologin | `core` | `SELECT` sur toutes les tables `core` (accès via `v_customers_masked`) | Aucun |
-| `auditors_group` | Nologin | `core`, `audit` | `SELECT` sur l'ensemble des tables `core` et `audit.audit_log` | Aucun |
-
----
-
-## Instructions de Déploiement
-
-Pour réinitialiser et exécuter l'ensemble du projet en une seule commande :
+Depuis la VM, dans le dossier du dépôt :
 
 ```bash
-cd scripts && sudo ./master.sh
+sudo bash scripts/master.sh
 ```
-## Schéma des tables
 
-core.customers (customer_id, first_name, last_name, email, phone, birth_date, kyc_status, risk_level)
-       │
-       └───► core.accounts (account_id, customer_id, iban, account_type, balance, status)
-                 │
-                 ├───► core.transfers (transfer_id, from_account_id, to_account_id, amount, label)
-                 │
-                 └───► core.transactions (tx_id, account_id, tx_type, amount, balance_after, transfer_id)
-                           │
-                           └───► core.fraud_alerts (alert_id, account_id, tx_id, rule_code, status)
+Le script installe PostgreSQL, demande confirmation avant de supprimer `bankdb`, recrée les rôles et les données, exécute les tests et vérifie la restauration d'une sauvegarde. **Attention : les anciennes données de bankdb sont supprimées.**
 
-audit.audit_log (log_id, table_name, operation, old_data, new_data, db_user, changed_at)
+Pour utiliser une autre adresse IP ou un autre sous-réseau :
 
-## Sauvegarde et Restauration
+```bash
+sudo DB_HOST_IP=192.168.51.10 DB_SUBNET=192.168.51.0/24 bash scripts/master.sh
+```
 
-## 1. Création d'une base de test
-sudo -u postgres createdb bankdb_test
+## Mots de passe
 
-## 2. Restauration de la sauvegarde avec pg_restore
-sudo -u postgres pg_restore -d bankdb_test < bankdb_backup.dump
+Les rôles sont créés **sans mot de passe**. Les définir manuellement sur la VM après l'installation :
 
-## 3. Vérification du nombre d'écritures
-sudo -u postgres psql -d bankdb_test -c "SELECT count(*) FROM core.transactions;"
+```bash
+sudo -u postgres psql
+\password bank_owner
+\password app_user
+\password analyst_user
+\password support_user
+\password auditor_user
+\q
+```
 
-## 4. Suppression de la base de test
-sudo -u postgres dropdb bankdb_test
+Ne jamais publier ces mots de passe ou le fichier `~/.pgpass`. Si des mots de passe ont été publiés dans d'anciens commits, il faut les changer : la PR n'efface pas l'historique Git.
 
-# Utilisation de l'IA (Transparence)
+## Fichiers
 
-Dans le cadre du projet NovaBank Core, l'IA a été consultée pour : 
- 1. Génération de masse : Optimisation de la requête de création du 1 000 000 de transactions via generate_series et l'utilisation de la fonction de fenêtre SUM() OVER (PARTITION BY ... ORDER BY ...) pour calculer les soldes cumulés sans boucles procédurales.
- 2. Gestion de la concurrence : Structuration de la procédure stockée sp_transfer avec un ordre strict de verrouillage des lignes par ID croissant (ORDER BY account_id FOR UPDATE) pour éviter tout problème d'interblocage (deadlock).
+| Fichier | Rôle |
+| --- | --- |
+| `01_setup_server.sh` | PostgreSQL, pg_hba.conf et pare-feu |
+| `02_schema_and_data.sql` | 6 tables et 1 million d'écritures |
+| `03_roles_and_permissions.sql` | 4 profils et utilisateurs |
+| `04_views.sql` | Vue masquée, modifiable, matérialisée |
+| `05_indexes_and_perf.sql` | 4 index et EXPLAIN avant/après |
+| `06_triggers.sql` | Soldes, immutabilité, fraude, audit |
+| `07_procedures.sql` | Virement, ouverture, relevé |
+| `08_tests.sql` | Tests automatiques et annulation des changements |
+| `09_backup_restore.sh` | pg_dump, pg_restore, comparaison des lignes |
+| `master.sh` | Reconstruit le projet dans l'ordre |
+
+## Relations
+
+- `core.customers` → `core.accounts` (1 client, plusieurs comptes)
+- `core.accounts` → `core.transfers` (compte source et destination)
+- `core.transfers` → `core.transactions` (2 écritures par virement)
+- `core.accounts` → `core.transactions` et `core.fraud_alerts`
+- `core.transactions` → `core.fraud_alerts`
+- `audit.audit_log` garde les anciennes et nouvelles valeurs importantes.
+
+## Matrice des droits
+
+| Rôle | Accès |
+| --- | --- |
+| `bank_owner` | Propriétaire des objets |
+| `app_user` | Exécute les 3 procédures, sans accès direct aux tables |
+| `analyst_user` | Lit comptes, virements, écritures, alertes et vues de synthèse |
+| `support_user` | Lit uniquement `v_customers_masked` |
+| `auditor_user` | Lit les tables et les journaux d'audit |
+
+Les 3 derniers utilisateurs appartiennent aux groupes `analysts_group`, `support_group` et `auditors_group`.
+
+## Vérifications et captures à rendre
+
+Le script `master.sh` lance `08_tests.sql` (tous les changements de test sont annulés) et `09_backup_restore.sh`. On peut aussi les exécuter séparément :
+
+```bash
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d bankdb < scripts/08_tests.sql
+sudo bash scripts/09_backup_restore.sh
+```
+
+Les captures utiles pour le rendu : connexion SSH, `ufw status`, `pg_hba_file_rules`, les 6 tables, le nombre d'écritures, refus d'accès aux emails, `EXPLAIN` avant/après, triggers, procédures, et la restauration.
+
+Test manuel des permissions :
+
+```sql
+SET ROLE support_user;
+SELECT * FROM core.v_customers_masked LIMIT 2; -- autorisé
+SELECT * FROM core.customers LIMIT 2;          -- refusé
+RESET ROLE;
+```
+
+Test manuel de concurrence : ouvrir deux consoles `psql` et lancer en même temps `CALL core.sp_transfer(1, 2, 6000, 'test');`. Une seule doit réussir si le compte possède 10 000. Vérifier ensuite que le solde n'est pas négatif. Faire ce test sur une installation de démonstration (ou dans deux transactions annulées).
+
+La vue matérialisée peut être actualisée avec :
+
+```sql
+REFRESH MATERIALIZED VIEW CONCURRENTLY core.mv_daily_summary;
+```
+
+Le fichier local `bankdb_backup.dump` est ignoré par Git.
+
+## Captures existantes
+
+Les captures de la première version sont dans l'historique du README. Ajouter les nouvelles captures de validation avant le rendu.
+
+## Usage de l'IA
+
+Une IA a aidé à revoir les scripts SQL et Bash, les droits, les transactions concurrentes, les triggers et les tests. Les commandes doivent être comprises et expliquées lors de l'évaluation. Aucun bonus n'est implémenté.
